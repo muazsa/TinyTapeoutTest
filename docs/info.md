@@ -7,7 +7,6 @@ You can also include images in this folder and reference them in the markdown. E
 512 kb in size, and the combined size of all images must be less than 1 MB.
 -->
 
-## How it works
 
 This project implements a VGA text display that shows the animated text "ITI Luebeck" on a standard VGA monitor at 640×480 resolution @ 60Hz.
 
@@ -94,10 +93,6 @@ A 10-bit frame counter increments once per frame (every time the beam returns to
 - Horizontal scroll uses bits [8:3] for slower movement
 - Vertical bounce uses bits [6:4] for medium speed oscillation
 - Rainbow colors use bits [7:0] for smooth color cycling
-
-## How to test
-
-Explain how to use your project
 
 ## External hardware
 
