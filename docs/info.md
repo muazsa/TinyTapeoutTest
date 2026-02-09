@@ -9,80 +9,96 @@ You can also include images in this folder and reference them in the markdown. E
 
 ## How it works
 
-This project implements a VGA text display that shows "ITI Luebeck" with animated visual effects. The design generates standard VGA timing signals at 640x480 resolution using a 25.175 MHz clock.
+This project implements a VGA text display that shows the animated text "ITI Luebeck" on a standard VGA monitor at 640×480 resolution @ 60Hz.
 
-### Core Components:
+### VGA Signal Generation
 
-**VGA Sync Generator** (`hvsync_generator.v`):
-- Generates horizontal and vertical sync signals (hsync, vsync) according to VGA 640x480 @ 60Hz timing specification
-- Provides current pixel position (hpos, vpos) for the rendering logic
-- Outputs a display_on signal to indicate when the beam is in the visible display area
+### Hardware Setup
 
-**Text Rendering Engine** (`project.v`):
-- Implements a custom character ROM for displaying the text "ITI Luebeck"
-- Each character is rendered using a 16x16 pixel cell (with an 8x12 font bitmap inside)
-- Supports both uppercase letters (I, T, L) and lowercase letters (u, e, b, c, k), plus spaces
-- Positions characters at specific screen coordinates and renders them pixel-by-pixel
+1. **Connect VGA PMOD**: Attach a Tiny VGA PMOD (or compatible VGA output board) to the output pins
+   - The pinout follows the standard Tiny VGA PMOD configuration with RGB222 color depth
+   - Outputs uo[7:0] map to: HSync, B0, G0, R0, VSync, B1, G1, R1
 
-**Animation System**:
-- Frame counter increments at the start of each video frame to drive animations
-- Two animation modes controlled by input pin `ui_in[1]`:
-  - **Horizontal Scroll** (mode 0): Text scrolls from right to left across the screen
-  - **Vertical Bounce** (mode 1): Text moves up and down vertically
+2. **Connect VGA Monitor**: Use a standard VGA cable to connect the PMOD to any VGA-compatible monitor or display
 
-**Visual Effects**:
-- Two color modes controlled by input pin `ui_in[0]`:
-  - **White Mode** (mode 0): Text appears in white against an animated background
-  - **Rainbow Mode** (mode 1): Text cycles through colors based on position and time
-- Animated background pattern using XOR operations on pixel coordinates and frame counter
+3. **Power On**: Enable the design with the clock running at 25.175 MHz (or 25 MHz as approximation)
 
-**Output Format**:
-- Generates 6-bit RGB color (2 bits per channel: RGB222)
-- Compatible with Tiny VGA PMOD interface
-- Pin mapping: R1, G1, B1 for MSBs; R0, G0, B0 for LSBs; plus HSync and VSync signals
+### Testing Procedure
+
+1. **Basic Display Test**:
+   - After power-on, you should see "ITI Luebeck" text appear on the screen
+   - With no inputs (ui_in = 0), the text will scroll horizontally in white color
+   - An animated XOR pattern background should be visible
+
+2. **Test Color Mode** (ui_in[0]):
+   - Set ui_in[0] = 0: Text appears in white
+   - Set ui_in[0] = 1: Text displays in rainbow colors that cycle continuously
+
+3. **Test Movement Mode** (ui_in[1]):
+   - Set ui_in[1] = 0: Text scrolls horizontally from right to left
+   - Set ui_in[1] = 1: Text bounces vertically up and down
+
+4. **Combination Test**:
+   - Try different combinations of the two control inputs:
+     - ui_in[1:0] = 00: White horizontal scroll
+     - ui_in[1:0] = 01: Rainbow horizontal scroll
+     - ui_in[1:0] = 10: White vertical bounce
+     - ui_in[1:0] = 11: Rainbow vertical bounce
+
+### Expected Results
+
+- The text "ITI Luebeck" should be clearly readable
+- Animations should run smoothly at 60 frames per second
+- The background pattern should animate continuously
+- Mode changes via input pins should take effect immediately
+- No inputs ui_in[7:2] are used and can be left unconnectedsync generator module that produces the required horizontal and vertical sync signals (HSYNC and VSYNC) along with position counters. The VGA timing follows the standard 640×480 @ 60Hz specification:
+- 25.175 MHz pixel clock
+- Horizontal: 640 display + 16 front porch + 96 sync + 48 back porch = 800 total
+- Vertical: 480 display + 10 front porch + 2 sync + 33 back porch = 525 total
+- **Tiny VGA PMOD** (or compatible VGA output board): Required for converting the digital RGB signals to analog VGA output
+  - Provides RGB222 color depth (6-bit total: 2 bits each for R, G, B)
+  - Includes resistor DACs for analog conversion
+  - Has a VGA connector for standard VGA cables
+
+- **VGA Monitor or Display**: Any VGA-compatible monitor that supports 640×480 @ 60Hz resolution
+  - Most modern monitors with VGA input will work
+  - Older CRT monitors are also compatible
+  - Some modern displays may require a VGA-to-HDMI adapter
+### Text Display System
+
+The text rendering system divides the screen into a character grid, where each character occupies a 16×16 pixel cell (using an 8×12 font within each cell):
+
+1. **Character Grid**: The screen is divided into 40 columns × 30 rows of character cells
+2. **Font ROM**: Character bitmaps for each letter (I, T, L, u, e, b, c, k) are stored in hardcoded lookup tables
+3. **Text String**: The message "ITI Luebeck" (11 characters) is displayed
+
+### Animation Modes
+
+The design supports two animation modes controlled by input pins:
+
+**Mode Selection (ui_in[1])**:
+- Mode 0 (Horizontal Scroll): Text scrolls continuously from right to left across the screen
+- Mode 1 (Vertical Bounce): Text moves up and down vertically while remaining horizontally centered
+
+**Color Modes (ui_in[0])**:
+- Mode 0 (White): Text displayed in white color
+- Mode 1 (Rainbow): Text color cycles through the spectrum based on position and frame counter
+
+### Background Animation
+
+The background features an animated XOR pattern that creates a dynamic visual effect. The pattern is calculated using `(hpos ^ vpos) ^ frame_offset`, creating diagonal stripes that shift over time.
+
+### Frame Counter
+
+A 10-bit frame counter increments once per frame (every time the beam returns to position 0,0) to drive all animations. Different bits of this counter control animation speeds:
+- Horizontal scroll uses bits [8:3] for slower movement
+- Vertical bounce uses bits [6:4] for medium speed oscillation
+- Rainbow colors use bits [7:0] for smooth color cycling
 
 ## How to test
 
-### Hardware Setup:
-
-1. **Connect a Tiny VGA PMOD** to the output pins according to this mapping:
-   - `uo[0]` → R1 (Red MSB)
-   - `uo[1]` → G1 (Green MSB)
-   - `uo[2]` → B1 (Blue MSB)
-   - `uo[3]` → VSync
-   - `uo[4]` → R0 (Red LSB)
-   - `uo[5]` → G0 (Green LSB)
-   - `uo[6]` → B0 (Blue LSB)
-   - `uo[7]` → HSync
-
-2. **Connect the Tiny VGA PMOD to a VGA monitor** using a standard VGA cable
-
-3. **Ensure the design is clocked at 25.175 MHz** for proper VGA timing (640x480 @ 60Hz)
-
-### Testing Procedure:
-
-1. **Default behavior**: After reset, you should see "ITI Luebeck" text scrolling horizontally from right to left on the screen with a white color and an animated background pattern.
-
-2. **Test color modes** (toggle `ui_in[0]`):
-   - Set `ui_in[0] = 0`: Text appears in white
-   - Set `ui_in[0] = 1`: Text appears with rainbow color cycling effect
-
-3. **Test movement modes** (toggle `ui_in[1]`):
-   - Set `ui_in[1] = 0`: Text scrolls horizontally from right to left
-   - Set `ui_in[1] = 1`: Text is horizontally centered and bounces vertically
-
-4. **Combine modes**: Try all four combinations (00, 01, 10, 11) of the control inputs to see different animation and color effects.
-
-5. **Visual verification**: The text should be clearly readable with smooth animation. The background should show an animated XOR pattern.
-
-### Expected Results:
-- Stable VGA output at 640x480 resolution
-- Clear, readable "ITI Luebeck" text
-- Smooth animation without flicker
-- Responsive control input changes (movement and color modes)
+Explain how to use your project
 
 ## External hardware
 
-- **Tiny VGA PMOD**: Required for converting the 6-bit RGB output signals to analog VGA signals
-- **VGA Monitor**: Any standard VGA monitor supporting 640x480 @ 60Hz resolution
-- **VGA Cable**: Standard 15-pin VGA cable to connect the PMOD to the monitor
+List external hardware used in your project (e.g. PMOD, LED display, etc), if any
